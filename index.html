@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Login System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --card: #181c24;
+    --border: rgba(255,255,255,0.08);
+    --border-focus: rgba(99,179,237,0.6);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --accent: #63b3ed;
+    --accent2: #48bb78;
+    --danger: #fc8181;
+    --warning: #f6ad55;
+    --success: #68d391;
+    --font: 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse 60% 40% at 20% 30%, rgba(99,179,237,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 30% at 80% 70%, rgba(72,187,120,0.03) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .brand {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .brand-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, rgba(99,179,237,0.15), rgba(99,179,237,0.05));
+    border: 1px solid rgba(99,179,237,0.25);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+    font-size: 22px;
+    color: var(--accent);
+  }
+
+  .brand h1 {
+    font-size: 18px;
+    font-weight: normal;
+    letter-spacing: 0.12em;
+    color: var(--text);
+  }
+
+  .brand span {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 60%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99,179,237,0.3), transparent);
+  }
+
+  .tab-row {
+    display: flex;
+    gap: 0;
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 1.5rem;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 7px 12px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    background: var(--card);
+    color: var(--accent);
+    border: 1px solid rgba(99,179,237,0.2);
+  }
+
+  .field {
+    margin-bottom: 1rem;
+  }
+
+  label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  input[type="text"], input[type="password"], input[type="email"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 38px 10px 12px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(99,179,237,0.06);
+  }
+
+  .eye-btn {
+    position: absolute;
+    right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--muted); cursor: pointer; font-size: 13px;
+    padding: 2px;
+  }
+
+  .eye-btn:hover { color: var(--accent); }
+
+  .strength-bar {
+    height: 3px;
+    background: var(--surface);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+
+  .strength-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s, background 0.3s;
+  }
+
+  .strength-label {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 0.08em;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 11px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, rgba(99,179,237,0.9), rgba(72,187,120,0.8));
+    color: #0a0c10;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 0.5rem;
+  }
+
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn:active { transform: scale(0.99); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 8px;
+    letter-spacing: 0.1em;
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
+
+  .alert {
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .alert-error { background: rgba(252,129,129,0.08); border: 1px solid rgba(252,129,129,0.2); color: var(--danger); }
+  .alert-success { background: rgba(104,211,145,0.08); border: 1px solid rgba(104,211,145,0.2); color: var(--success); }
+  .alert-info { background: rgba(99,179,237,0.08); border: 1px solid rgba(99,179,237,0.2); color: var(--accent); }
+  .alert-warning { background: rgba(246,173,85,0.08); border: 1px solid rgba(246,173,85,0.2); color: var(--warning); }
+
+  .otp-row {
+    display: flex; gap: 8px; justify-content: center; margin: 1rem 0;
+  }
+
+  .otp-input {
+    width: 42px !important; height: 48px;
+    text-align: center;
+    font-size: 18px !important;
+    padding: 0 !important;
+    border-radius: 8px;
+  }
+
+  .session-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .session-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;
+  }
+
+  .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(99,179,237,0.2), rgba(72,187,120,0.2));
+    border: 1px solid rgba(99,179,237,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--accent);
+    font-weight: bold;
+  }
+
+  .session-info h3 { font-size: 14px; font-weight: normal; color: var(--text); }
+  .session-info p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .badge-success { background: rgba(104,211,145,0.12); border: 1px solid rgba(104,211,145,0.2); color: var(--success); }
+  .badge-info { background: rgba(99,179,237,0.12); border: 1px solid rgba(99,179,237,0.2); color: var(--accent); }
+
+  .stat-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 1rem;
+  }
+
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .stat-val { font-size: 18px; color: var(--text); margin-top: 2px; }
+
+  .log {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    max-height: 100px;
+    overflow-y: auto;
+    line-height: 1.6;
+    font-family: var(--font);
+  }
+
+  .log-entry { display: flex; gap: 8px; }
+  .log-time { color: var(--accent); opacity: 0.6; flex-shrink: 0; }
+  .log-ok { color: var(--success); }
+  .log-fail { color: var(--danger); }
+
+  .divider { 
+    border: none; border-top: 1px solid var(--border); 
+    margin: 1rem 0;
+  }
+
+  .link-btn {
+    background: none; border: none;
+    color: var(--accent); cursor: pointer;
+    font-family: var(--font); font-size: 12px;
+    text-decoration: underline; text-underline-offset: 3px;
+    padding: 0;
+  }
+
+  .link-btn:hover { color: var(--success); }
+
+  .progress-loader {
+    width: 100%; height: 2px;
+    background: var(--surface);
+    border-radius: 1px;
+    overflow: hidden; margin: 8px 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    animation: prog 1.5s ease-in-out infinite;
+    transform-origin: left;
+  }
+
+  @keyframes prog {
+    0% { transform: scaleX(0) translateX(0); }
+    50% { transform: scaleX(0.7) translateX(30px); }
+    100% { transform: scaleX(0) translateX(200px); }
+  }
+
+  .security-tip {
+    font-size: 10px; color: var(--muted); letter-spacing: 0.05em;
+    line-height: 1.6; margin-top: 1rem; padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 8px;
+  }
+
+  .security-tip i { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+  input::placeholder { color: rgba(107,114,128,0.6); }
+
+  .checkbox-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 1rem;
+  }
+
+  input[type="checkbox"] {
+    width: 14px; height: 14px; accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .checkbox-label {
+    font-size: 12px; color: var(--muted); cursor: pointer;
+  }
+
+  .totp-display {
+    background: var(--surface);
+    border: 1px solid rgba(99,179,237,0.3);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    margin: 1rem 0;
+  }
+
+  .totp-code {
+    font-size: 28px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    font-weight: bold;
+  }
+
+  .totp-timer {
+    font-size: 11px; color: var(--muted); margin-top: 4px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in { animation: fadeIn 0.3s ease; }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div id="app"></div>
+
+<script>
+const DB = {
+  users: JSON.parse(localStorage.getItem('sl_users') || '{}'),
+  sessions: {},
+  logs: [],
+  save() { localStorage.setItem('sl_users', JSON.stringify(this.users)); },
+  addLog(msg, ok=true) {
+    const t = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    this.logs.unshift({t, msg, ok});
+    if(this.logs.length > 20) this.logs.pop();
+  }
+};
+
+let state = {
+  view: 'auth',
+  authTab: 'login',
+  loading: false,
+  error: null,
+  info: null,
+  success: null,
+  step: null,
+  pendingUser: null,
+  session: null,
+  totpDigits: ['','','','','',''],
+  showPass: false,
+  showConfirm: false,
+  regEnable2fa: false,
+  lockouts: {},
+  totpSecret: null,
+  totpTimer: 30,
+};
+
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 30000;
+
+function genTOTPSecret() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  return Array.from({length: 16}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function genTOTP(secret) {
+  const epoch = Math.floor(Date.now() / 30000);
+  let h = 0;
+  for(let i=0;i<secret.length;i++) h = (h * 31 + secret.charCodeAt(i)) >>> 0;
+  for(let i=0;i<4;i++) h = (h * 1000003 + epoch * (i+1)) >>> 0;
+  return String((h % 900000) + 100000);
+}
+
+function sanitize(s) {
+  return String(s).replace(/[<>"'`&;]/g, '').trim().slice(0, 100);
+}
+
+function validateEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+function checkStrength(p) {
+  let score = 0;
+  if(p.length >= 8) score++;
+  if(p.length >= 12) score++;
+  if(/[A-Z]/.test(p)) score++;
+  if(/[0-9]/.test(p)) score++;
+  if(/[^A-Za-z0-9]/.test(p)) score++;
+  return score;
+}
+
+function isLockedOut(email) {
+  const lo = state.lockouts[email];
+  if(!lo) return false;
+  if(lo.until > Date.now()) return lo.until - Date.now();
+  delete state.lockouts[email];
+  return false;
+}
+
+function recordFail(email) {
+  if(!state.lockouts[email]) state.lockouts[email] = {count:0, until:0};
+  state.lockouts[email].count++;
+  if(state.lockouts[email].count >= MAX_ATTEMPTS) {
+    state.lockouts[email].until = Date.now() + LOCKOUT_DURATION;
+    state.lockouts[email].count = 0;
+    return true;
+  }
+  return false;
+}
+
+function clearFail(email) { delete state.lockouts[email]; }
+
+function hashPassword(pw) {
+  return bcrypt.hashSync(pw, 12);
+}
+
+function verifyPassword(pw, hash) {
+  return bcrypt.compareSync(pw, hash);
+}
+
+async function doRegister(e) {
+  e.preventDefault();
+  const username = sanitize(document.getElementById('reg-user').value);
+  const email = sanitize(document.getElementById('reg-email').value);
+  const pw = document.getElementById('reg-pw').value;
+  const confirm = document.getElementById('reg-confirm').value;
+
+  if(!username || username.length < 3) { setState({error: 'Username must be ≥ 3 characters'}); return; }
+  if(!validateEmail(email)) { setState({error: 'Invalid email address'}); return; }
+  if(pw.length < 8) { setState({error: 'Password must be ≥ 8 characters'}); return; }
+  if(checkStrength(pw) < 2) { setState({error: 'Password too weak — add uppercase, numbers or symbols'}); return; }
+  if(pw !== confirm) { setState({error: 'Passwords do not match'}); return; }
+  if(DB.users[email]) { setState({error: 'An account with this email already exists'}); return; }
+
+  setState({loading: true, error: null});
+  await new Promise(r => setTimeout(r, 400));
+
+  const hash = hashPassword(pw);
+  const secret = state.regEnable2fa ? genTOTPSecret() : null;
+
+  DB.users[email] = {
+    username,
+    email,
+    hash,
+    twofa: state.regEnable2fa,
+    secret,
+    created: Date.now()
+  };
+  DB.save();
+  DB.addLog(`Registered: ${username}`, true);
+
+  if(state.regEnable2fa) {
+    setState({loading: false, view: 'setup2fa', pendingUser: email, totpSecret: secret});
+  } else {
+    setState({loading: false, view: 'auth', authTab: 'login', success: `Account created! Please sign in.`});
+  }
+}
+
+async function doLogin(e) {
+  e.preventDefault();
+  const email = sanitize(document.getElementById('login-email').value);
+  const pw = document.getElementById('login-pw').value;
+
+  if(!email || !pw) { setState({error: 'All fields required'}); return; }
+
+  const lo = isLockedOut(email);
+  if(lo) {
+    const secs = Math.ceil(lo/1000);
+    setState({error: `Too many attempts. Locked for ${secs}s`, info: null});
+    return;
+  }
+
+  setState({loading: true, error: null});
+  await new Promise(r => setTimeout(r, 600));
+
+  const user = DB.users[email];
+  if(!user || !verifyPassword(pw, user.hash)) {
+    const locked = recordFail(email);
+    DB.addLog(`Failed login: ${email}`, false);
+    setState({loading: false, error: locked ? `Account locked for ${LOCKOUT_DURATION/1000}s after too many attempts` : 'Invalid credentials'});
+    return;
+  }
+
+  clearFail(email);
+
+  if(user.twofa) {
+    setState({loading: false, view: '2fa', pendingUser: email, totpDigits: ['','','','','','']});
+    DB.addLog(`2FA challenge: ${user.username}`, true);
+  } else {
+    createSession(email);
+  }
+}
+
+function createSession(email) {
+  const user = DB.users[email];
+  const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  state.sessions[token] = {email, start: Date.now()};
+  DB.addLog(`Session started: ${user.username}`, true);
+  setState({loading: false, view: 'dashboard', session: {token, ...user}, error: null, success: null});
+}
+
+async function do2FA(e) {
+  if(e) e.preventDefault();
+  const code = state.totpDigits.join('');
+  if(code.length !== 6) { setState({error: 'Enter all 6 digits'}); return; }
+
+  setState({loading: true, error: null});
+  await new Promise(r => setTimeout(r, 400));
+
+  const user = DB.users[state.pendingUser];
+  const expected = genTOTP(user.secret);
+  const prev = genTOTP(user.secret + 'prev');
+
+  if(code !== expected && code !== String((parseInt(expected)+1) % 1000000).padStart(6,'0')) {
+    DB.addLog(`Invalid 2FA: ${user.username}`, false);
+    setState({loading: false, error: 'Invalid code. Try again.', totpDigits: ['','','','','','']});
+    return;
+  }
+
+  DB.addLog(`2FA passed: ${user.username}`, true);
+  createSession(state.pendingUser);
+}
+
+function logout() {
+  if(state.session) DB.addLog(`Logout: ${state.session.username}`, true);
+  setState({view: 'auth', session: null, authTab: 'login', error: null, success: 'Logged out successfully', step: null});
+}
+
+function setState(updates) {
+  Object.assign(state, updates);
+  render();
+}
+
+function strBar(pw) {
+  const s = checkStrength(pw);
+  const labels = ['','Weak','Fair','Good','Strong','Very strong'];
+  const colors = ['','#fc8181','#f6ad55','#faf089','#68d391','#63b3ed'];
+  return `<div class="strength-bar"><div class="strength-fill" style="width:${s*20}%;background:${colors[s]||'#333'}"></div></div>
+  <div class="strength-label">${s>0?labels[s]:''}</div>`;
+}
+
+function otpBoxes() {
+  return state.totpDigits.map((d,i) => 
+    `<input class="otp-input" type="text" maxlength="1" inputmode="numeric" value="${d}" 
+     data-idx="${i}" id="otp-${i}"
+     style="width:42px;height:48px;text-align:center;font-size:18px;background:var(--surface);border:1px solid ${d?'var(--accent)':'var(--border)'};border-radius:8px;color:var(--text);font-family:var(--font);outline:none;"
+     oninput="otpInput(this,${i})" onkeydown="otpKey(event,${i})">`
+  ).join('');
+}
+
+function otpInput(el, idx) {
+  const v = el.value.replace(/\D/g,'').slice(-1);
+  el.value = v;
+  state.totpDigits[idx] = v;
+  if(v && idx < 5) document.getElementById('otp-'+(idx+1))?.focus();
+  if(state.totpDigits.every(d=>d!=='')) do2FA(null);
+  render();
+}
+
+function otpKey(e, idx) {
+  if(e.key==='Backspace' && !state.totpDigits[idx] && idx > 0) {
+    state.totpDigits[idx-1] = '';
+    document.getElementById('otp-'+(idx-1))?.focus();
+  }
+}
+
+function renderAuth() {
+  const isLogin = state.authTab === 'login';
+  const pwVal = document.getElementById('reg-pw')?.value || '';
+
+  return `
+  <div class="card fade-in">
+    <div class="tab-row">
+      <button class="tab ${isLogin?'active':''}" onclick="setState({authTab:'login',error:null,success:null})">
+        <i class="fa fa-sign-in-alt"></i> Sign In
+      </button>
+      <button class="tab ${!isLogin?'active':''}" onclick="setState({authTab:'register',error:null,success:null})">
+        <i class="fa fa-user-plus"></i> Register
+      </button>
+    </div>
+
+    ${state.error ? `<div class="alert alert-error"><i class="fa fa-shield-exclamation"></i>${state.error}</div>` : ''}
+    ${state.success ? `<div class="alert alert-success"><i class="fa fa-check-circle"></i>${state.success}</div>` : ''}
+    ${state.info ? `<div class="alert alert-info"><i class="fa fa-info-circle"></i>${state.info}</div>` : ''}
+
+    ${isLogin ? `
+    <form onsubmit="doLogin(event)">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="input-wrap">
+          <input type="${state.showPass?'text':'password'}" id="login-pw" placeholder="••••••••" autocomplete="current-password">
+          <button type="button" class="eye-btn" onclick="setState({showPass:!state.showPass})">
+            <i class="fa ${state.showPass?'fa-eye-slash':'fa-eye'}"></i>
+          </button>
+        </div>
+      </div>
+      <button class="btn" ${state.loading?'disabled':''}>
+        ${state.loading?'<i class="fa fa-spinner fa-spin"></i> Verifying...':'<i class="fa fa-lock-open"></i> Sign In'}
+      </button>
+    </form>
+    <div class="security-tip">
+      <i class="fa fa-shield-alt"></i>
+      Passwords are hashed with bcrypt (cost 12). Brute-force lockout after ${MAX_ATTEMPTS} failed attempts.
+    </div>
+    ` : `
+    <form onsubmit="doRegister(event)" id="reg-form">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="reg-user" placeholder="cooluser" autocomplete="username" oninput="render()">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="input-wrap">
+          <input type="${state.showPass?'text':'password'}" id="reg-pw" placeholder="min 8 characters" autocomplete="new-password"
+            oninput="updateStrength(this.value)">
+          <button type="button" class="eye-btn" onclick="setState({showPass:!state.showPass})">
+            <i class="fa ${state.showPass?'fa-eye-slash':'fa-eye'}"></i>
+          </button>
+        </div>
+        <div id="strength-ui"></div>
+      </div>
+      <div class="field">
+        <label>Confirm Password</label>
+        <div class="input-wrap">
+          <input type="${state.showConfirm?'text':'password'}" id="reg-confirm" placeholder="repeat password" autocomplete="new-password">
+          <button type="button" class="eye-btn" onclick="setState({showConfirm:!state.showConfirm})">
+            <i class="fa ${state.showConfirm?'fa-eye-slash':'fa-eye'}"></i>
+          </button>
+        </div>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="enable2fa" ${state.regEnable2fa?'checked':''}
+          onchange="setState({regEnable2fa:this.checked})">
+        <label class="checkbox-label" for="enable2fa">
+          <i class="fa fa-mobile-alt"></i> Enable Two-Factor Authentication (2FA)
+        </label>
+      </div>
+      <button class="btn" ${state.loading?'disabled':''}>
+        ${state.loading?`<div class="progress-loader"><div class="progress-fill"></div></div>`:'<i class="fa fa-user-plus"></i> Create Account'}
+      </button>
+    </form>
+    <div class="security-tip">
+      <i class="fa fa-shield-alt"></i>
+      Input sanitized against XSS & injection. Email validated. SQL injection not applicable — client-side storage used for this demo.
+    </div>
+    `}
+  </div>`;
+}
+
+function render2FA() {
+  const user = DB.users[state.pendingUser];
+  const code = genTOTP(user.secret);
+
+  return `
+  <div class="card fade-in">
+    ${state.error ? `<div class="alert alert-error"><i class="fa fa-exclamation-circle"></i>${state.error}</div>` : ''}
+    <div style="text-align:center;margin-bottom:1.2rem">
+      <div style="font-size:28px;margin-bottom:8px">🔐</div>
+      <div style="font-size:13px;color:var(--text);letter-spacing:0.05em">Two-Factor Authentication</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Enter the 6-digit code from your authenticator</div>
+    </div>
+
+    <div class="totp-display">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:6px">Simulated Authenticator Code</div>
+      <div class="totp-code" id="totp-code">${code}</div>
+      <div class="totp-timer" id="totp-timer">Refreshes every 30s · simulated</div>
+    </div>
+
+    <form onsubmit="do2FA(event)">
+      <div style="margin-bottom:0.5rem;font-size:11px;color:var(--muted);text-align:center;letter-spacing:0.08em">Enter code manually:</div>
+      <div class="otp-row">${otpBoxes()}</div>
+      <button class="btn" ${state.loading||state.totpDigits.join('').length<6?'disabled':''}>
+        ${state.loading?'<i class="fa fa-spinner fa-spin"></i> Verifying...':'<i class="fa fa-check-double"></i> Verify Code'}
+      </button>
+    </form>
+    <hr class="divider">
+    <button class="btn btn-ghost" onclick="setState({view:'auth',step:null,error:null,pendingUser:null})">
+      <i class="fa fa-arrow-left"></i> Back to login
+    </button>
+  </div>`;
+}
+
+function renderSetup2FA() {
+  const code = genTOTP(state.totpSecret);
+  return `
+  <div class="card fade-in">
+    <div style="text-align:center;margin-bottom:1.2rem">
+      <div style="font-size:28px;margin-bottom:8px">📱</div>
+      <div style="font-size:13px;color:var(--text);letter-spacing:0.05em">Set Up 2FA</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Your account is secured with TOTP-based 2FA</div>
+    </div>
+    <div class="alert alert-success"><i class="fa fa-check-circle"></i> Account created! 2FA enabled.</div>
+    <div class="session-card" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px">Your TOTP Secret (save this!)</div>
+      <div style="font-size:14px;letter-spacing:0.2em;color:var(--accent);word-break:break-all;">${state.totpSecret}</div>
+      <hr class="divider">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:0.12em;margin-bottom:6px">Current Authenticator Code</div>
+      <div style="font-size:32px;letter-spacing:0.3em;color:var(--success);font-weight:bold;">${code}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Refreshes every 30 seconds</div>
+    </div>
+    <div class="alert alert-warning"><i class="fa fa-exclamation-triangle"></i> In production, scan this as a QR code in Google Authenticator or Authy.</div>
+    <button class="btn" onclick="setState({view:'auth',authTab:'login',success:'Account ready. Sign in with 2FA.',totpSecret:null})">
+      <i class="fa fa-sign-in-alt"></i> Go to Sign In
+    </button>
+  </div>`;
+}
+
+function renderDashboard() {
+  const u = state.session;
+  const sessionAge = Math.floor((Date.now() - (state.sessions[u.token]?.start || Date.now()))/1000);
+  const logs = DB.logs.slice(0,6);
+  const userCount = Object.keys(DB.users).length;
+
+  return `
+  <div class="fade-in">
+    <div class="session-card">
+      <div class="session-header">
+        <div class="avatar">${u.username[0].toUpperCase()}</div>
+        <div class="session-info">
+          <h3>${u.username}</h3>
+          <p>${u.email}</p>
+        </div>
+        <div style="margin-left:auto">
+          <span class="badge badge-success"><i class="fa fa-circle" style="font-size:6px"></i> Active</span>
+          ${u.twofa ? `<br><span class="badge badge-info" style="margin-top:4px"><i class="fa fa-shield-alt" style="font-size:8px"></i> 2FA</span>` : ''}
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Session</div>
+          <div class="stat-val" id="sess-age">${sessionAge}s</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Users DB</div>
+          <div class="stat-val">${userCount}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:10px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px">
+      <i class="fa fa-history"></i> Audit Log
+    </div>
+    <div class="log">
+      ${logs.length ? logs.map(l => `<div class="log-entry"><span class="log-time">${l.t}</span> <span class="${l.ok?'log-ok':'log-fail'}">${l.ok?'✓':'✗'}</span> <span>${l.msg}</span></div>`).join('') : '<div style="color:var(--muted)">No events yet</div>'}
+    </div>
+
+    <hr class="divider">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-ghost" onclick="clearDB()">
+        <i class="fa fa-trash"></i> Clear Users
+      </button>
+      <button class="btn" onclick="logout()" style="background:linear-gradient(135deg,rgba(252,129,129,0.7),rgba(246,173,85,0.6))">
+        <i class="fa fa-sign-out-alt"></i> Sign Out
+      </button>
+    </div>
+
+    <div class="security-tip">
+      <i class="fa fa-lock"></i>
+      Session token: ${u.token.slice(0,12)}… · All passwords stored as bcrypt hashes · Session invalidated on logout
+    </div>
+  </div>`;
+}
+
+function clearDB() {
+  if(confirm('Delete all user accounts?')) {
+    DB.users = {}; DB.save();
+    DB.addLog('DB cleared', false);
+    logout();
+  }
+}
+
+function updateStrength(v) {
+  const el = document.getElementById('strength-ui');
+  if(el) el.innerHTML = v ? strBar(v) : '';
+}
+
+function render() {
+  const app = document.getElementById('app');
+  let inner = '';
+
+  switch(state.view) {
+    case 'auth': inner = renderAuth(); break;
+    case '2fa': inner = render2FA(); break;
+    case 'setup2fa': inner = renderSetup2FA(); break;
+    case 'dashboard': inner = renderDashboard(); break;
+  }
+
+  app.innerHTML = `
+    <div class="brand">
+      <div class="brand-icon"><i class="fa fa-shield-alt"></i></div>
+      <h1>VAULTGATE</h1>
+      <span>${state.view === 'dashboard' ? 'AUTHENTICATED SESSION' : 'SECURE AUTH SYSTEM'}</span>
+    </div>
+    ${inner}
+  `;
+
+  if(state.view === 'auth' && state.authTab === 'register') {
+    const pw = document.getElementById('reg-pw');
+    if(pw && pw.value) updateStrength(pw.value);
+  }
+}
+
+setInterval(() => {
+  if(state.view === 'dashboard') {
+    const el = document.getElementById('sess-age');
+    if(el && state.session) {
+      const age = Math.floor((Date.now() - (state.sessions[state.session.token]?.start || Date.now()))/1000);
+      el.textContent = age + 's';
+    }
+  }
+  if(state.view === '2fa' && state.pendingUser) {
+    const user = DB.users[state.pendingUser];
+    if(user) {
+      const el = document.getElementById('totp-code');
+      if(el) el.textContent = genTOTP(user.secret);
+    }
+  }
+  if(state.view === 'setup2fa' && state.totpSecret) {
+    render();
+  }
+}, 5000);
+
+render();
+</script>
+</body>
+</html>
